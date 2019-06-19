@@ -27,6 +27,7 @@ func main() {
 	}))
 	svcEcs := ecs.New(sess)
 
+	//List existing clusters to check
 	listInput := &ecs.ListClustersInput{}
 	listResults, err := svcEcs.ListClusters(listInput)
 	if err != nil {
