@@ -63,6 +63,10 @@ func main() {
 		log.Panic(err)
 	}
 	containerArn := taskResults.Tasks[0].ContainerInstanceArn
+	taskArn := taskResults.Tasks[0].TaskDefinitionArn
+	t := strings.Split(*taskArn, "/")
+	taskDefName := t[len(t)-1]
+	taskDefName = strings.Replace(taskDefName, ":", "-", -1)
 
 	//Find the EC2 instance ID of the instance our container is running on
 	containerInput := &ecs.DescribeContainerInstancesInput{
@@ -85,7 +89,7 @@ func main() {
 
 	//SSH to the EC2 instance to `docker ps` and find our container id
 	sshString := string("ec2-user@" + *instanceIp)
-	grepString := "docker ps | grep " + *service + " | head -n1 | tr '\\t' ' ' | cut -d ' ' -f 1"
+	grepString := "docker ps | grep " + taskDefName + " | head -n1 | tr '\\t' ' ' | cut -d ' ' -f 1"
 	containerIdCmd := exec.Command("ssh", sshString, grepString)
 	containerIdResult, err := containerIdCmd.Output()
 	if err != nil {
