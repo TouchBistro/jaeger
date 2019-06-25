@@ -1,7 +1,7 @@
 package main
 
 import (
-	"flag"
+	"fmt"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/ec2"
@@ -15,10 +15,15 @@ import (
 
 func main() {
 	//Process flag (Maybe might make this a single arg)
-	service := flag.String("service", "", "Service on ECS to hunt for a container of")
-	flag.Parse()
-	if *service == "" {
-		log.Fatal("Unset flags, need -service")
+	//service := flag.String("service", "", "Service on ECS to hunt for a container of")
+	//flag.Parse()
+
+	var service *string
+	if len(os.Args) > 1 {
+		service = &os.Args[1]
+	} else {
+		blank := ""
+		service = &blank
 	}
 
 	//Connect to ECS API
@@ -31,7 +36,24 @@ func main() {
 	listInput := &ecs.ListClustersInput{}
 	listResults, err := svcEcs.ListClusters(listInput)
 	if err != nil {
-		log.Panic(err)
+		log.Fatal(err)
+	}
+
+	if *service == "" {
+		for _, arn := range listResults.ClusterArns {
+			input := &ecs.ListServicesInput{
+				Cluster:    arn,
+				MaxResults: aws.Int64(100),
+			}
+			result, err := svcEcs.ListServices(input)
+			if err == nil {
+				for _, arn := range result.ServiceArns {
+					t := strings.Split(*arn, "/")
+					fmt.Println(t[len(t)-1])
+				}
+			}
+		}
+		os.Exit(0)
 	}
 
 	//Find which cluster our service is on and some currently running task IDs
@@ -60,7 +82,7 @@ func main() {
 	}
 	taskResults, err := svcEcs.DescribeTasks(taskInput)
 	if err != nil {
-		log.Panic(err)
+		log.Fatal(err)
 	}
 	containerArn := taskResults.Tasks[0].ContainerInstanceArn
 	taskArn := taskResults.Tasks[0].TaskDefinitionArn
@@ -83,7 +105,7 @@ func main() {
 	}
 	instanceResults, err := svcEc2.DescribeInstances(instanceInput)
 	if err != nil {
-		log.Panic(err)
+		log.Fatal(err)
 	}
 	instanceIp := instanceResults.Reservations[0].Instances[0].NetworkInterfaces[0].PrivateIpAddress
 
@@ -91,9 +113,10 @@ func main() {
 	sshString := string("ec2-user@" + *instanceIp)
 	grepString := "docker ps | grep " + taskDefName + " | head -n1 | tr '\\t' ' ' | cut -d ' ' -f 1"
 	containerIdCmd := exec.Command("ssh", sshString, grepString)
+	containerIdCmd.Stderr = os.Stderr
 	containerIdResult, err := containerIdCmd.Output()
 	if err != nil {
-		log.Panic(err)
+		log.Fatalf("Failed to retrieve container id: %s\n", err)
 	}
 	containerId := string(containerIdResult)
 	containerId = strings.TrimSuffix(containerId, "\n")
@@ -102,13 +125,14 @@ func main() {
 	runCmd := string("docker exec -ti " + containerId + " sh")
 	sshPath, lookErr := exec.LookPath("ssh")
 	if lookErr != nil {
-		log.Panic(lookErr)
+		log.Fatalf("Could not find ssh: %s\n", lookErr)
+		log.Fatal(lookErr)
 	}
 	sshArgs := []string{"ssh", "-t", sshString, runCmd}
 	env := os.Environ()
-	log.Println(sshArgs)
+	fmt.Println(sshArgs)
 	execErr := syscall.Exec(sshPath, sshArgs, env)
 	if execErr != nil {
-		log.Panic(execErr)
+		log.Fatalf("Failed to exec ssh: %s\n", execErr)
 	}
 }

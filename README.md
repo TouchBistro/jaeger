@@ -3,6 +3,8 @@ Jaeger is a tool to aid in live debugging of ECS containers. It assumes you've u
 
 ```
 Usage of ./jaeger:
-  -service string
-    	Service on ECS to hunt for a container of
+  ./jaeger
+    	List all services available across every visible cluster
+  ./jaeger service-name
+  		Attempt to resolve container location and ssh directly into a sh on that container
 ```
