@@ -6,5 +6,5 @@ Usage of ./jaeger:
   ./jaeger
     	List all services available across every visible cluster
   ./jaeger service-name
-  		Attempt to resolve container location and ssh directly into a sh on that container
+    	Attempt to resolve container location and ssh directly into a sh on that container
 ```
