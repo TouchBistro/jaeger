@@ -7,4 +7,6 @@ Usage of ./jaeger:
     	List all services available across every visible cluster
   ./jaeger service-name
     	Attempt to resolve container location and ssh directly into a sh on that container
+  ./jaeger service-name -logs
+    	Attempt to retrieve logs from dead containers of a service.
 ```

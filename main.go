@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -15,12 +16,12 @@ import (
 
 func main() {
 	//Process flag (Maybe might make this a single arg)
-	//service := flag.String("service", "", "Service on ECS to hunt for a container of")
-	//flag.Parse()
+	logs := flag.Bool("logs", false, "Check for log output from dead containers instead")
+	flag.Parse()
 
 	var service *string
 	if len(os.Args) > 1 {
-		service = &os.Args[1]
+		service = &os.Args[len(os.Args)-1]
 	} else {
 		blank := ""
 		service = &blank
@@ -60,10 +61,15 @@ func main() {
 	var clusterArn *string
 	var taskArns []*string
 	for _, arn := range listResults.ClusterArns {
+		desiredStatus := "RUNNING"
+		if *logs {
+			desiredStatus = "STOPPED"
+		}
 		input := &ecs.ListTasksInput{
-			Cluster:     arn,
-			ServiceName: service,
-			MaxResults:  aws.Int64(100),
+			Cluster:       arn,
+			ServiceName:   service,
+			DesiredStatus: &desiredStatus,
+			MaxResults:    aws.Int64(100),
 		}
 		result, err := svcEcs.ListTasks(input)
 		if err == nil {
@@ -72,7 +78,11 @@ func main() {
 		}
 	}
 	if len(taskArns) < 1 {
-		log.Fatal("Could not find service")
+		if *logs {
+			log.Fatal("Could not find any stopped tasks for " + *service)
+		} else {
+			log.Fatal("Could not find service")
+		}
 	}
 
 	//Find a container instance ARN from the first running task we found
@@ -112,6 +122,9 @@ func main() {
 	//SSH to the EC2 instance to `docker ps` and find our container id
 	sshString := string("ec2-user@" + *instanceIp)
 	grepString := "docker ps | grep " + taskDefName + " | head -n1 | tr '\\t' ' ' | cut -d ' ' -f 1"
+	if *logs {
+		grepString = "docker ps -a | grep " + taskDefName + " | head -n1 | tr '\\t' ' ' | cut -d ' ' -f 1"
+	}
 	containerIdCmd := exec.Command("ssh", sshString, grepString)
 	containerIdCmd.Stderr = os.Stderr
 	containerIdResult, err := containerIdCmd.Output()
@@ -123,6 +136,9 @@ func main() {
 
 	//Exec into ssh, passing the container id to drop right into shell
 	runCmd := string("docker exec -ti " + containerId + " sh")
+	if *logs {
+		runCmd = string("docker logs " + containerId)
+	}
 	sshPath, lookErr := exec.LookPath("ssh")
 	if lookErr != nil {
 		log.Fatalf("Could not find ssh: %s\n", lookErr)
