@@ -6,10 +6,13 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/ec2"
+	"github.com/aws/aws-sdk-go/service/ec2instanceconnect"
 	"github.com/aws/aws-sdk-go/service/ecs"
+	"io/ioutil"
 	"log"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"syscall"
 )
@@ -27,11 +30,26 @@ func main() {
 		service = &blank
 	}
 
+	sess, err := session.NewSessionWithOptions(session.Options{
+		// Specify profile to load for the session's config
+		//Profile: "test",
+
+		// Provide SDK Config options, such as Region.
+		Config: aws.Config{
+			Region: aws.String("us-east-1"),
+		},
+
+		// Force enable Shared Config support
+		SharedConfigState: session.SharedConfigEnable,
+	})
+
 	//Connect to ECS API
-	sess := session.Must(session.NewSession(&aws.Config{
-		Region: aws.String("us-east-1"),
-	}))
+	/*sess := session.Must(session.NewSession(&aws.Config{
+		Region:  aws.String("us-east-1"),
+		Profile: aws.String("test"),
+	}))*/
 	svcEcs := ecs.New(sess)
+	svcConn := ec2instanceconnect.New(sess)
 
 	//List existing clusters to check
 	listInput := &ecs.ListClustersInput{}
@@ -118,6 +136,29 @@ func main() {
 		log.Fatal(err)
 	}
 	instanceIp := instanceResults.Reservations[0].Instances[0].NetworkInterfaces[0].PrivateIpAddress
+	instanceAz := instanceResults.Reservations[0].Instances[0].Placement.AvailabilityZone
+
+	keyPath := filepath.Join(os.Getenv("HOME"), ".ssh/id_rsa.pub")
+
+	sshKey, _ := ioutil.ReadFile(keyPath)
+	sshKeyString := string(sshKey)
+	ec2connInput := &ec2instanceconnect.SendSSHPublicKeyInput{
+		InstanceId:       aws.String(*instanceId),
+		SSHPublicKey:     aws.String(sshKeyString),
+		AvailabilityZone: aws.String(*instanceAz),
+		InstanceOSUser:   aws.String("ec2-user"),
+	}
+
+	keyRes, err := svcConn.SendSSHPublicKey(ec2connInput)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	if *keyRes.Success {
+		fmt.Println("sent key in ~/.ssh/id_rsa.pub")
+	} else {
+		fmt.Println("couldn't send key in ~/.ssh/id_rsa.pub")
+	}
 
 	//SSH to the EC2 instance to `docker ps` and find our container id
 	sshString := string("ec2-user@" + *instanceIp)
