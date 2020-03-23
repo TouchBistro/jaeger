@@ -43,11 +43,6 @@ func main() {
 		SharedConfigState: session.SharedConfigEnable,
 	})
 
-	//Connect to ECS API
-	/*sess := session.Must(session.NewSession(&aws.Config{
-		Region:  aws.String("us-east-1"),
-		Profile: aws.String("test"),
-	}))*/
 	svcEcs := ecs.New(sess)
 	svcConn := ec2instanceconnect.New(sess)
 
@@ -135,7 +130,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	instanceIp := instanceResults.Reservations[0].Instances[0].NetworkInterfaces[0].PrivateIpAddress
+	instanceIp := instanceResults.Reservations[0].Instances[0].NetworkInterfaces[0].Association.PublicIp
 	instanceAz := instanceResults.Reservations[0].Instances[0].Placement.AvailabilityZone
 
 	keyPath := filepath.Join(os.Getenv("HOME"), ".ssh/id_rsa.pub")
