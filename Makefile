@@ -1,0 +1,47 @@
+.DEFAULT_GOAL = build
+
+# Get all dependencies
+setup:
+# Only install if missing
+ifeq (,$(wildcard bin/golangci-lint))
+	curl -sfL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | sh
+endif
+
+	go mod download
+.PHONY: setup
+
+# Build jaeger
+build:
+	go build
+.PHONY: build
+
+# Clean all build artifacts
+clean:
+	rm -rf dist
+	rm -rf coverage
+	rm -f jaeger
+.PHONY: clean
+
+# Run the linter
+lint:
+	./bin/golangci-lint run ./...
+.PHONY: lint
+
+# Remove version of tb installed with go install
+go-uninstall:
+	rm $(shell go env GOPATH)/bin/jaeger
+.PHONY: go-uninstall
+
+# Run tests and collect coverage data
+test:
+	mkdir -p coverage
+	go test -coverpkg=./... -coverprofile=coverage/coverage.txt ./...
+	go tool cover -html=coverage/coverage.txt -o coverage/coverage.html
+.PHONY: test
+
+# Run tests and print coverage data to stdout
+test-ci:
+	mkdir -p coverage
+	go test -coverpkg=./... -coverprofile=coverage/coverage.txt ./...
+	go tool cover -func=coverage/coverage.txt
+.PHONY: test-ci

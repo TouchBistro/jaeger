@@ -1,0 +1,34 @@
+version: 2.1
+
+cache_key: &cache_key jaeger-20201126-{{ checksum "go.sum" }}
+
+jobs:
+  lint-build-test:
+    docker:
+      - image: cimg/go:1.15
+    steps:
+      - checkout
+      - restore_cache:
+          name: Restore dependency cache
+          keys:
+            - *cache_key
+      - run:
+          name: Install dependencies
+          command: make setup
+      - save_cache:
+          name: Cache dependencies
+          key: *cache_key
+          paths:
+            - ~/go/pkg
+            - bin/golangci-lint
+      - run:
+          name: Run linter
+          command: make lint
+      - run:
+          name: Build jaeger
+          command: make build
+
+workflows:
+  lint-build-test:
+    jobs:
+      - lint-build-test
