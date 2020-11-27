@@ -15,7 +15,7 @@ type logsOptions struct {
 	sshPublicKeyPath string
 }
 
-var logsOpts sshOptions
+var logsOpts logsOptions
 
 var logsCmd = &cobra.Command{
 	Use:   "logs <service>",
