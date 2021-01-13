@@ -17,3 +17,7 @@ jaeger ssh <service>
 ```
 
 Run `jaeger -h` to see available commands. You can view help for a given command by running `jaeger <command> -h`.
+
+## License
+
+MIT © TouchBistro, see [LICENSE](LICENSE) for details.
