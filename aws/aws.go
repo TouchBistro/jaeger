@@ -2,7 +2,6 @@ package aws
 
 import (
 	"context"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -29,9 +28,8 @@ func init() {
 }
 
 // ListServices returns the names of all available ECS services.
-func ListServices() ([]string, error) {
+func ListServices(ctx context.Context) ([]string, error) {
 	ecsClient := ecs.NewFromConfig(awsConfig)
-	ctx := context.Background()
 
 	// This is paginated but if we ever have that many clusters that
 	// it's an issue then we have a bigger problem
@@ -74,9 +72,8 @@ type ServiceContainer struct {
 	ContainerID     string
 }
 
-func FindServiceContainer(opts FindServiceContainerOptions) (ServiceContainer, error) {
+func FindServiceContainer(ctx context.Context, opts FindServiceContainerOptions) (ServiceContainer, error) {
 	ecsClient := ecs.NewFromConfig(awsConfig)
-	ctx := context.Background()
 	var clusterARNs []string
 	if opts.ClusterName != "" {
 		describeClustersOutput, err := ecsClient.DescribeClusters(ctx, &ecs.DescribeClustersInput{
@@ -197,7 +194,7 @@ func FindServiceContainer(opts FindServiceContainerOptions) (ServiceContainer, e
 		sshPublicKeyPath = absPath
 	}
 
-	sshPublicKey, err := ioutil.ReadFile(sshPublicKeyPath)
+	sshPublicKey, err := os.ReadFile(sshPublicKeyPath)
 	if err != nil {
 		return ServiceContainer{}, errors.Wrapf(err, "failed to read file %s", sshPublicKeyPath)
 	}
