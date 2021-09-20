@@ -23,7 +23,7 @@ var sshCmd = &cobra.Command{
 	Short: "ssh directly into an ECS container.",
 	Run: func(cmd *cobra.Command, args []string) {
 		serviceName := args[0]
-		container, err := aws.FindServiceContainer(aws.FindServiceContainerOptions{
+		container, err := aws.FindServiceContainer(cmd.Context(), aws.FindServiceContainerOptions{
 			ServiceName:      serviceName,
 			ClusterName:      sshOpts.clusterName,
 			SSHPublicKeyPath: sshOpts.sshPublicKeyPath,

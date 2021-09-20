@@ -23,7 +23,7 @@ var logsCmd = &cobra.Command{
 	Short: "Retrieve logs from dead containers of an ECS service",
 	Run: func(cmd *cobra.Command, args []string) {
 		serviceName := args[0]
-		container, err := aws.FindServiceContainer(aws.FindServiceContainerOptions{
+		container, err := aws.FindServiceContainer(cmd.Context(), aws.FindServiceContainerOptions{
 			ServiceName:      serviceName,
 			ClusterName:      logsOpts.clusterName,
 			SSHPublicKeyPath: logsOpts.sshPublicKeyPath,
